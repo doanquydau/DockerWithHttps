@@ -1,0 +1,68 @@
+###############################################################################
+#                          Generated on phpdocker.io                          #
+###############################################################################
+version: "3.1"
+services:
+
+    mysql-marketplace:
+      image: mysql:5.7
+      working_dir: /application
+      volumes:
+        - .:/application
+      environment:
+        - MYSQL_ROOT_PASSWORD=root
+        - MYSQL_DATABASE=marketplace_db
+        - MYSQL_USER=marketplace
+        - MYSQL_PASSWORD=marketplace
+      ports:
+        - "3312:3306"
+
+    webserver-marketplace:
+      # image: nginx:alpine
+      build: phpdocker/nginx
+      working_dir: /application
+      volumes:
+          - .:/application
+          - ./phpdocker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+          - ./phpdocker/nginx/certs:/etc/nginx/certs
+      ports:
+       - "88:80"
+       - "443:443"
+      links:
+        - mysql-marketplace
+        - mailcatcher-marketplace
+      environment:
+        - PMA_HOST=mysql-marketplace
+
+    php-fpm-72:
+      build: phpdocker/php-fpm
+      working_dir: /application
+      volumes:
+        - .:/application
+        - ./phpdocker/php-fpm/php-ini-overrides.ini:/etc/php/7.2/fpm/conf.d/99-overrides.ini
+        #- ./phpdocker/supervisor/laravel-worker.conf:/etc/supervisor/conf.d/laravel-worker.conf
+      links:
+        - mysql-marketplace
+        - mailcatcher-marketplace
+      environment:
+        - PMA_HOST=mysql-marketplace
+
+    phpmyadmin-marketplace:
+      image: phpmyadmin/phpmyadmin:edge-4.8
+      working_dir: /application
+      ports:
+       - "8088:80"
+      links:
+       - mysql-marketplace
+      environment:
+        - PMA_HOST=mysql-marketplace
+
+    mailcatcher-marketplace:
+      image: schickling/mailcatcher
+      ports:
+       - "1088:1080"
+       - "1028:1025"
+networks:
+  default:
+    external:
+      name: winedepot_default
